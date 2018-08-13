@@ -56,7 +56,7 @@
 #include <fstream>
 #include <sstream>
 
-#define Mel 5.1E-4 // electron mass (GeV)
+#define Mel 5.11E-4 // electron mass (GeV)
 #define Mmu 0.1056 // muon mass (GeV)
 #define alphaEW 1.0/137.0
 #define MUp 2.79 // protonMu
@@ -132,7 +132,8 @@ AccumulatedProbability(0.)
    nptable = NPTAB;
    double epi[NPTAB]={MA+Mmu, MA+Mmu+.1,MA+Mmu+2., MA+Mmu+10., MA+Mmu+20., MA+Mmu+50., MA+Mmu+100., MA+Mmu+150., MA+Mmu+250., MA+Mmu+500., MA+Mmu+800., MA+Mmu+1500., MA+Mmu+2000., MA+Mmu+2500., MA+Mmu+4000.};
    for(int ip=0; ip < nptable; ip++) {ep[ip] = epi[ip];}
-   ParseLHE(fname, 5.0); 
+   ParseLHE(fname); 
+   MakePlaceholders();
    std::sort(energies.begin(), energies.end());
 }
 
@@ -153,7 +154,7 @@ double DsigmaDx(double x, void * pp)
    return DsDx;
 }
 
-void DarkPhotons::ParseLHE(std::string fname, double ebeam)
+void DarkPhotons::ParseLHE(std::string fname)
 {
    std::ifstream ifile;
    ifile.open(fname.c_str());
@@ -163,9 +164,6 @@ void DarkPhotons::ParseLHE(std::string fname, double ebeam)
       exit(1);
    }   
    std::string line;
-   int nentries=0;
-   mgdata[ebeam];
-   printf("Making energy %e.\n",ebeam);
    while(std::getline(ifile, line))
    {
       std::istringstream iss(line);
@@ -173,17 +171,68 @@ void DarkPhotons::ParseLHE(std::string fname, double ebeam)
       double skip, px, py, pz, E, pt, efrac, M;
       if (iss >> ptype >> state >> skip >> skip >> skip >> skip >> px >> py >> pz >> E >> M ) 
       {
-         if((ptype==11)&&(state==1))
+         if((ptype==11)&&(state==-1))
 	 {
-	    pt = sqrt(px*px+py*py);
-            efrac = (E - M)/(ebeam-M-MA);
-	    nentries++;
-            mgdata[ebeam].push_back(std::make_pair(efrac,pt));
+            double ebeam = E;
+	    double e_px, e_py, e_pz, a_px, a_py,  a_pz, e_E, a_E, e_M, a_M;
+	    if(mgdata.count(ebeam) == 0) {mgdata[ebeam];}
+	    for(int i=0;i<2;i++) {std::getline(ifile,line);}
+	    std::istringstream jss(line);
+	    jss >> ptype >> state >> skip >> skip >> skip >> skip >> e_px >> e_py >> e_pz >> e_E >> e_M; 
+	    if((ptype==11)&&(state==1))
+	    {
+	       for(int i=0;i<2;i++) {std::getline(ifile,line);}
+	       std::istringstream kss(line);
+	       kss >> ptype >> state >> skip >> skip >> skip >> skip >> a_px >> a_py >> a_pz >> a_E >> a_M; 
+	       if((ptype==622)&&(state==1))
+	       {
+	          frame evnt;
+                  double cmpx = a_px+e_px;
+		  double cmpy = a_py+e_py;
+		  double cmpz = a_pz+e_pz;
+		  double cmE = a_E+e_E;
+		  double cmpt = sqrt(cmpx*cmpx+cmpy*cmpy);
+		  double p_drop = ebeam - cmpz;
+		  double e_drop = ebeam - cmE;
+    
+                  double b_x = -cmpx/cmE;
+		  double b_y = -cmpy/cmE;
+		  double b_z = -cmpz/cmE;
+
+		  double b2 = b_x*b_x + b_y*b_y + b_z*b_z;
+		  double gamma = 1. / sqrt(1.-b2);
+		  double bp = b_x*e_px + b_y*e_py + b_z*e_pz;
+		  double gamma2 = b2>0 ? (gamma -1.)/b2 : 0.0;
+
+		  double ecm_x = e_px + gamma2*bp*b_x + gamma*b_x*e_E;
+		  double ecm_y = e_py + gamma2*bp*b_y + gamma*b_y*e_E;
+		  double ecm_z = e_pz + gamma2*bp*b_z + gamma*b_z*e_E;
+		  double ecm_pt = sqrt(ecm_x*ecm_x+ecm_y*ecm_y);
+		  double ecm_theta = atan(ecm_pt/ecm_z);
+		  if(ecm_theta<0) {ecm_theta=ecm_theta+3.14159;}
+		  double ecm_E = gamma*(e_E + bp);
+		  evnt.fE = e_drop;
+		  evnt.fpt = cmpt;
+		  evnt.fpz = p_drop;
+		  evnt.eE = ecm_E;
+		  evnt.eTheta = ecm_theta;
+		  evnt.efrac = (e_E-Mel)/(ebeam-Mel-MA);
+		  //Need cm frame pt, energy, and electron angle and energy in that frame.
+		  mgdata[ebeam].push_back(evnt);
+	       }
+	    }
 	 }
       }
    }
-   energies.push_back(std::make_pair(ebeam,int(drand48()*nentries)));
    ifile.close();
+}
+
+void DarkPhotons::MakePlaceholders()
+{
+   for( const auto &iter : mgdata )
+   {
+      energies.push_back(std::make_pair(iter.first,iter.second.size()));
+   }
 }
 
 double chi (double t, void * pp) 
@@ -443,25 +492,11 @@ TLorentzVector* DarkPhotons::SimulateEmission(double E0)
    double Eout, Theta, Phi, Eta;
    std::pair < double, double > data = GetMadgraphData(E0);
    double XAcc = data.first;
-   double Pt = data.second;
-   int i = 0;
-   while (Pt + Mel > XAcc)
-   {
-      i++;
-      data = GetMadgraphData(E0);
-      XAcc = data.first;
-      Pt = data.second;
-//      printf("Skipped an event\n.");
-      if(i>10000)
-      {
-         printf("Did not manage to simulate.\n");
-	 return fParticle;
-      }
-   }
+   double theta = data.second;
    double P = sqrt(XAcc*XAcc-Mel*Mel);
+   double Pt = P*sin(theta);
    Eout = XAcc;
-   Theta = asin(Pt/P);
-   Eta = -log(tan(Theta/2.));
+   Eta = -log(tan(theta/2.));
    Phi = drand48()*2.*3.14159;
    fParticle->SetPtEtaPhiE(Pt,Eta,Phi,Eout);
    return fParticle;
@@ -470,6 +505,7 @@ TLorentzVector* DarkPhotons::SimulateEmission(double E0)
 std::pair <double, double> DarkPhotons::GetMadgraphData(double E0)
 {
    double samplingE = energies[0].first;
+   frame cmdata;
    double efrac = 0;
    double pt = 0;
    int i=0;
@@ -482,19 +518,64 @@ std::pair <double, double> DarkPhotons::GetMadgraphData(double E0)
       if(i>=energies.size()) {pass=true;}
    }
    if(i>0) {i=i-1;}
-   
-   if(energies[i].second>=mgdata[energies[i].first].size())
+   int j=0;
+   pass=false;
+   double Enew, ecm_z, ecm_x;
+   while(!pass)
    {
-      energies[i].second = 0;
-   }
+      j++;
+      double cmpx, ecm, cmpz;
+      if(energies[i].second>=mgdata[energies[i].first].size()) {energies[i].second = 0;}
+      cmdata = mgdata[energies[i].first].at(energies[i].second);
+      energies[i].second=energies[i].second+1;
+  
+      double basepz = energies[i].first-cmdata.fpz;
+      double baseE = energies[i].first-cmdata.fE;
+      cmpz = E0-cmdata.fpz;
+      ecm = E0-cmdata.fE;
+      cmpx = cmdata.fpt;
+      double baseM = sqrt(baseE*baseE-basepz*basepz-cmpx*cmpx);
 
-   efrac = mgdata[energies[i].first].at(energies[i].second).first;
-   pt = mgdata[energies[i].first].at(energies[i].second).second;
-   energies[i].second=energies[i].second+1;
-   
-   double avail = E0 - MA - Mel;
-//   printf("Selected energy %e.\n", energies[i].first);
-   return std::make_pair(efrac*avail+Mel,pt);
+      cmpz = sqrt(ecm*ecm-cmpx*cmpx-baseM*baseM);
+
+      double b_x = cmpx/ecm;
+      double b_z = cmpz/ecm;
+
+      double e_E = cmdata.eE;
+      double e_p = sqrt(e_E*e_E-Mel*Mel);
+      double e_x = e_p*sin(cmdata.eTheta);
+      double e_z = e_p*cos(cmdata.eTheta);
+
+      double b2 = b_x*b_x + b_z*b_z;
+      double gamma = 1. / sqrt(1.-b2);
+      double bp = b_x*e_x + b_z*e_z;
+      double gamma2 = b2>0 ? (gamma -1.)/b2 : 0.0;
+
+      ecm_x = e_x + gamma2*bp*b_x + gamma*b_x*e_E;
+      ecm_z = e_z + gamma2*bp*b_z + gamma*b_z*e_E;
+      Enew = cmdata.efrac*(E0-MA-Mel)+Mel;
+/*      double t = atan(ecm_x/ecm_z);
+      if(t<0.) {t=t+M_PI;}
+      double A = drand48()*M_PI/2.;*/
+      if(ecm_z>0) {pass=true;}
+      else if((ecm_z*ecm_z+Mel*Mel)<(Enew*Enew)) {pass=true;}
+      if(j>100)
+      {
+         std::cout<<"Skipping an event.\n";
+	 return std::make_pair(0,0);
+      }
+   }
+//   if((ecm_z*ecm_z+Mel*Mel)<(Enew*Enew)) {ecm_x = sqrt(Enew*Enew-Mel*Mel-ecm_z*ecm_z);}
+   if(ecm_z<0) {ecm_x = sqrt(Enew*Enew-Mel*Mel-ecm_z*ecm_z);}
+   else if((ecm_z*ecm_z+Mel*Mel)<(Enew*Enew))
+   {
+      double t = atan(ecm_x/ecm_z);
+      double A = drand48()*M_PI/2.;
+      if(t>A) {ecm_x = sqrt(Enew*Enew-Mel*Mel-ecm_z*ecm_z);}
+   }
+   double theta = atan(ecm_x/ecm_z);
+   if(theta<0) {theta=theta+M_PI;}
+   return std::make_pair(Enew,theta);
 }
 
 TLorentzVector* DarkPhotons::MuSimulateEmission(double E0)

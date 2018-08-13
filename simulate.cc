@@ -1,7 +1,6 @@
 //To compile : g++ simulate.cc -o simulate `root-config --cflags --glibs` DarkPhotons.cc -lgsl -lgslcblas -lm
 
 #include "DarkPhotons.hh"
-//#include "combsim.hh"
 #include "TFile.h"
 #include "TTree.h"
 #include "TLorentzVector.h"

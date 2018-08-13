@@ -1,7 +1,7 @@
 #ifndef DarkPhotons_h
 #define DarkPhotons_h 1
 
-#define Mel 5.1E-4 // electron mass (GeV)
+#define Mel 5.11E-4 // electron mass (GeV)
 #define Mmu 0.1056 // muon mass (GeV)
 #define alphaEW 1.0/137.0
 #define MUp 2.79 // protonMu
@@ -19,6 +19,7 @@
 
 struct ParamsForChi {double AA; double ZZ; double MMA; double EE0;};
 struct momentum {double E0; double Theta; double Phi;};
+struct frame {double fE; double fpt; double fpz; double eE; double eTheta; double efrac;};
 
 class DarkPhotons
 {
@@ -31,7 +32,7 @@ class DarkPhotons
     ~DarkPhotons();
 
     void SetSigmaNorm(double SigmaNormIn);
-    void ParseLHE(std::string fname, double ebeam);
+    void ParseLHE(std::string fname);
     double TotalCrossSectionCalc(double E0);
     double TotalMuCrossSectionCalc(double E0);
     double MaxCrossSectionCalc(double E0);
@@ -49,10 +50,11 @@ class DarkPhotons
     TLorentzVector* SimulateEmission(double E0);
     TLorentzVector* MuSimulateEmission(double E0);
     double GetAccumulatedProbability() {return AccumulatedProbability;}
-    std::pair < double, double> GetMadgraphData(double E0);
+    std::pair <double, double> GetMadgraphData(double E0);
+    void MakePlaceholders();
 
   private:
-    std::map< double , std::vector < std::pair < double, double > > > mgdata;
+    std::map< double , std::vector < frame > > mgdata;
     std::vector < std::pair < double, int > > energies;
     double MA;
     double EThresh;
