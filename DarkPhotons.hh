@@ -8,18 +8,35 @@
 #define Mpr 0.938 // proton mass
 #define max_uint 4294967296.0l
 #define GeVtoPb 3.894E+08
-
 #define NPTAB 15
+#define EPSPARINV 1.e-8
+
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <map>
+#include <stdlib.h>
+#include <math.h>
+#include <stdio.h>
+#include <time.h>
+#include <bits/stdc++.h>
+
 #include "TLorentzVector.h"
+
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_multimin.h>
+#include <gsl/gsl_monte.h>
+#include <gsl/gsl_monte_plain.h>
+#include <gsl/gsl_monte_miser.h>
+#include <gsl/gsl_monte_vegas.h>
+#include <gsl/gsl_integration.h>
+#include <gsl/gsl_rng.h>
 
 struct ParamsForChi {double AA; double ZZ; double MMA; double EE0;};
 struct momentum {double E0; double Theta; double Phi;};
-struct frame {double fE; double fpt; double fpz; double eE; double eTheta; double efrac;};
+struct frame {double fE; double fpx; double fpy; double fpz; double efrac; double epx; double epy; double epz; double pt;};
 
 class DarkPhotons
 {
