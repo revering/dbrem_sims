@@ -36,7 +36,7 @@
 
 struct ParamsForChi {double AA; double ZZ; double MMA; double EE0;};
 struct momentum {double E0; double Theta; double Phi;};
-struct frame {double fE; double fpx; double fpy; double fpz; double efrac; double epx; double epy; double epz; double pt;};
+struct frame {TLorentzVector* fEl; TLorentzVector* cm;};
 
 class DarkPhotons
 {
@@ -67,7 +67,7 @@ class DarkPhotons
     TLorentzVector* SimulateEmission(double E0);
     TLorentzVector* MuSimulateEmission(double E0);
     double GetAccumulatedProbability() {return AccumulatedProbability;}
-    std::pair <double, double> GetMadgraphData(double E0);
+    TLorentzVector* GetMadgraphData(double E0);
     void MakePlaceholders();
 
   private:

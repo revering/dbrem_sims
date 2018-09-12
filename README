@@ -1,0 +1,11 @@
+DarkPhotons:
+Newest version of the scaling method. Boosts lorentz vectors to try and preserve backwards-going events. Unclear best manner to adjust momentum of electron-dark photon center of mass frame. If ebeam-p grows linearly, the low-angle events fit well. If ebeam-p stays constant, the high angle events fit well. Shown to work with downscaling, need to check upscaling effectiveness. Pairs with "simulate.cc".
+
+Dp_NewSim:
+Non-scaling method. Uses the Weiszacker-Williams approximation to create the differential cross section. Accept-reject method used to generate points following the 2D x-theta distribution. Significant differences observed at large angles, and at high A' masses. Pairs with "oldsim.cc".
+
+combsim:
+First version of the scaling method. Pulls the energy fraction from each event, then scales it to the new total beam energy. Electron Energy fractions are held constant. Can scale up or down. Pt found with approximate fits from madgraph, which scale with MA and the beam energy, as well as the particle type (muon or electron). Pt fitting done in order to allow upscaling. Pts are generated until the energy requirement isn't overfilled. Pairs with "csim.cc".
+
+**Previous Branch DarkPhotons**:
+Current active version of the simulation. Pulls the energy fraction and Pt from each event. Needs to scale down in order to avoid biasing issues. Reconstructs forward-going events very accurately, but does not produce backwards scatters. Pairs with "simulate.cc".
